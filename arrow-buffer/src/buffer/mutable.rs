@@ -118,6 +118,26 @@ impl MutableBuffer {
         Self { data, len, layout }
     }
 
+    /// Allocates a new [MutableBuffer] with `len` and capacity to be at least `len` where
+    /// all bytes are not initialized.
+    /// This method is useful when the caller wants to be more efficient and will initialize
+    /// the buffer later.
+    ///
+    /// # Safety
+    /// Caller is responsible for initializing the buffer.
+    pub unsafe fn from_len_uninitialized(len: usize) -> Self {
+        let layout = Layout::from_size_align(len, ALIGNMENT).unwrap();
+        let data = match layout.size() {
+            0 => dangling_ptr(),
+            _ => {
+                // Safety: Verified size != 0
+                let raw_ptr = unsafe { std::alloc::alloc(layout) };
+                NonNull::new(raw_ptr).unwrap_or_else(|| handle_alloc_error(layout))
+            }
+        };
+        Self { data, len, layout }
+    }
+
     /// Allocates a new [MutableBuffer] from given `Bytes`.
     pub(crate) fn from_bytes(bytes: Bytes) -> Result<Self, Bytes> {
         let layout = match bytes.deallocation() {

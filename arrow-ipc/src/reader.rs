@@ -1506,8 +1506,11 @@ impl<R: Read> StreamReader<R> {
                 let batch = message.header_as_record_batch().ok_or_else(|| {
                     ArrowError::IpcError("Unable to read IPC message as record batch".to_string())
                 })?;
+
+                // Safety: buf will be initialized by read_exact right after this block
+                let mut buf =
+                    unsafe { MutableBuffer::from_len_uninitialized(message.bodyLength() as usize) };
                 // read the block that makes up the record batch into a buffer
-                let mut buf = MutableBuffer::from_len_zeroed(message.bodyLength() as usize);
                 self.reader.read_exact(&mut buf)?;
 
                 RecordBatchDecoder::try_new(
@@ -1529,8 +1532,11 @@ impl<R: Read> StreamReader<R> {
                         "Unable to read IPC message as dictionary batch".to_string(),
                     )
                 })?;
-                // read the block that makes up the dictionary batch into a buffer
-                let mut buf = MutableBuffer::from_len_zeroed(message.bodyLength() as usize);
+
+                // Safety: buf will be initialized by read_exact right after this block
+                let mut buf =
+                    unsafe { MutableBuffer::from_len_uninitialized(message.bodyLength() as usize) };
+                // read the block that makes up the record batch into a buffer
                 self.reader.read_exact(&mut buf)?;
 
                 read_dictionary_impl(
